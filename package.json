@@ -1,0 +1,26 @@
+{
+  "name": "xue",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node ./scripts/rollup/build.js --watch --type=dev",
+    "build": "node ./scripts/rollup/build.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@rollup/plugin-alias": "^3.1.1",
+    "babel-eslint": "^10.1.0",
+    "chalk": "^4.1.0",
+    "eslint": "^7.8.1",
+    "eslint-config-standard": "^14.1.1",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "minimist": "^1.2.5",
+    "rollup": "^2.26.9"
+  }
+}

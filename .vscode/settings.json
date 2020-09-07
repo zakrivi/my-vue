@@ -1,0 +1,36 @@
+{
+    "vetur.validation.template": true,
+    "eslint.options": {
+        "configFile": "./.eslintrc.js"
+        
+      },
+      "eslint.nodePath": "./",
+    "editor.formatOnSave": false,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": true
+    },
+    "eslint.probe": [
+        "javascript",
+        "javascriptreact",
+        "typescript",
+        "typescriptreact",
+        "html",
+        "vue",
+    ],
+    "eslint.validate": [
+        "javascript",
+        "javascriptreact",
+        "vue",
+    ],
+    "eslint.run": "onSave",
+    "eslint.format.enable": true,
+    "[vue]": {
+        "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    }
+}
