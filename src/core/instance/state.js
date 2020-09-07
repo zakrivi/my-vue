@@ -1,5 +1,6 @@
 import { initComputed } from './computed.js'
 import { observe } from '../observer/index'
+import { initWatch } from './watch.js'
 
 export function initState (vm) {
     const opts = vm.$options
@@ -9,6 +10,10 @@ export function initState (vm) {
 
     if (opts.computed) {
         initComputed(vm, opts.computed)
+    }
+
+    if (opts.watch) {
+        initWatch(vm, opts.watch)
     }
 }
 

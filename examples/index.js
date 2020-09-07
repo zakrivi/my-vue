@@ -12,6 +12,14 @@ const vm = new Vue({
             return `姓名：${this.name}\n
                     年龄：${this.age}`
         }
+    },
+    watch: {
+        name (val) {
+            console.log('name', val)
+        },
+        age (val) {
+            console.log('age', val)
+        }
     }
 })
 
