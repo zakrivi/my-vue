@@ -1,9 +1,15 @@
 import { initComputed } from './computed.js'
 import { observe } from '../observer/index'
 import { initWatch } from './watch.js'
+import { initMethods } from './method.js'
 
 export function initState (vm) {
     const opts = vm.$options
+
+    if (opts.methods) {
+        initMethods(vm, opts.methods)
+    }
+
     if (opts.data) {
         initData(vm)
     }

@@ -16,9 +16,15 @@ const vm = new Vue({
     watch: {
         name (val) {
             console.log('name', val)
+            console.log('getName', this.getName())
         },
         age (val) {
             console.log('age', val)
+        }
+    },
+    methods: {
+        getName () {
+            return this.name
         }
     }
 })
