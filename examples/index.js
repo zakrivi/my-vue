@@ -22,6 +22,12 @@ const vm = new Vue({
             console.log('age', val)
         }
     },
+    beforeCreate () {
+        console.log('beforeCreate: ', this.name)
+    },
+    created () {
+        console.log('created: ', this.name)
+    },
     methods: {
         getName () {
             return this.name
