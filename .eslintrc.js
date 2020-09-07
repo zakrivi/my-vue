@@ -14,6 +14,8 @@ module.exports = {
     rules: {
         'no-new': 'off',
         'no-useless-escape': 'off',
-        indent: ['error', 4]
+        indent: ['error', 4, {
+            SwitchCase: 1
+        }]
     }
 }
