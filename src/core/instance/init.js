@@ -1,6 +1,7 @@
 import { initState } from './state.js'
 import { compile } from './compile.js'
 import { callHook } from './lifecycle.js'
+import { parse } from './parsesr.js'
 
 export function initMixin (Vue) {
     Vue.prototype._init = function (options) {
@@ -12,6 +13,7 @@ export function initMixin (Vue) {
         callHook(vm, 'created')
 
         if (vm.$options.el) {
+            parse(document.querySelector(vm.$options.el).outerHTML)
             compile(document.querySelector(vm.$options.el), vm)
         }
     }
