@@ -1,25 +1,43 @@
 import { Watcher } from '../observer/watcher.js'
+import { VNode } from './vnode.js'
 
 const stack = []
+const oldVNode = null
 
-export function parse (html, vm) {
-    const ast = parseHTML(html, vm)
+// export function parse (html, vm) {
+//     const ast = parseHTML(html, vm)
 
-    const str = htmlToFunction()
-    // eslint-disable-next-line no-new-func
-    window.render = new Function(str).bind({
-        ast,
-        objToDom,
-        vm
-    })
-    new Watcher(() => {
-        window.render()
-    })
+//     const code = generate(ast)
+//     // eslint-disable-next-line no-new-func
+//     const _render = new Function(code).bind({
+//         _c: createElement
+//     })
+
+//     new Watcher(() => {
+//         const newVNode = _render()
+//         if (oldVNode) {
+//             console.log({ oldVNode, newVNode })
+//         } else {
+//             render(newVNode)
+//             oldVNode = newVNode
+//         }
+//     })
+
+//     function createElement (tag, data, children) {
+//         const vnode = new VNode(tag, data, children, vm)
+//         return vnode
+//     }
+// }
+
+export function render (vnode) {
+    const frag = document.createDocumentFragment()
+    frag.appendChild(vnodeToDOM(vnode))
+    document.querySelector('body').replaceChild(frag, document.querySelector('#app'))
 }
 
 // 暂不考虑注释标签
 // 自循环解析数据，入栈出栈保证父子节点
-function parseHTML (html) {
+export function parseHTML (html) {
     let index = 0
     while (html) {
         // 匹配开始标签
@@ -28,7 +46,7 @@ function parseHTML (html) {
             parseStart(matchStart[1])
         }
 
-        if (['input'].includes(stack[stack.length - 1].type)) {
+        if (['input'].includes(stack[stack.length - 1].tag)) {
             // 自闭合结束标签
             const matchSelfCloseEnd = html.match(/^>/)
             if (matchSelfCloseEnd) {
@@ -63,7 +81,7 @@ function parseHTML (html) {
 
     function parseStart (tag) {
         const result = {
-            type: '',
+            tag: '',
             attrs: {},
             children: [],
             on: {},
@@ -74,8 +92,8 @@ function parseHTML (html) {
         if (tag === 'input') {
 
         }
-        result.type = tag
-        advence(1 + result.type.length)
+        result.tag = tag
+        advence(1 + result.tag.length)
 
         // 获取属性attr
         const matchAttr = html.match(/^([^<>]+)>/)
@@ -86,9 +104,9 @@ function parseHTML (html) {
                 const value = RegExp.$2
                 result.attrs[key] = value
                 if (key === 'v-model') {
-                    result.on.input = e => {
-                        vm[value] = e.target.value
-                    }
+                    result.on.input = `function(e){
+                        this.${value} = e.target.value
+                    }`
                 }
             }
             advence(matchAttr[1].length)
@@ -102,7 +120,7 @@ function parseHTML (html) {
 
     function parseText (text) {
         const obj = {
-            type: 'text',
+            tag: 'text',
             content: text,
             start: index,
             end: 0
@@ -122,81 +140,33 @@ function parseHTML (html) {
     }
 }
 
-function htmlToFunction () {
-    return `with(this){
-             document.querySelector("body").replaceChild(objToDom(ast, vm), document.querySelector("#app"))
-            }
-        `
+export function generate (ast) {
+    const code = genCode(ast)
+    return `with(this){return ${code}}`
 }
 
-function objToDom (ast, vm) {
-    let el = null
-    switch (ast.type) {
-        case 'input': {
-            el = document.createElement('input')
-            const value = ast.attrs['v-model']
-            el.value = vm[value]
-            Object.keys(ast.on)
-                .forEach(key => {
-                    el.addEventListener(key, ast.on[key])
-                })
-            break
-        }
-        case 'text': {
-            el = document.createTextNode(ast.content.replace(/{{\s*([A-z]*)\s*}}/g, (match, key) => {
-                return vm[key]
-            }))
-            return el
-        }
-        default: {
-            el = document.createElement(ast.type)
-            Object.keys(ast.attrs)
-                .forEach(key => {
-                    el.setAttribute(key, ast.attrs[key])
-                })
-        }
-    }
-
-    if (ast.children && ast.children.length) {
-        ast.children.forEach((item) => {
-            el.appendChild(objToDom(item, vm))
-        }, null)
-    }
-
-    return el
+function vnodeToDOM (vnode) {
+    vnode.children.forEach(item => {
+        vnode.elm.appendChild(vnodeToDOM(item))
+    })
+    return vnode.elm
 }
 
-function objToHtml (ast, vm) {
-    let start = ''
-    let end = ''
-    let content = ''
-    const attrStr = ast.attrs ? Object.keys(ast.attrs)
-        .map(key => ` ${key}=${ast.attrs[key]}`)
-        .join('') : ''
-
-    switch (ast.type) {
-        case 'text': {
-            content = ast.content.replace(/{{\s*([A-z]*)\s*}}/g, (match, key) => {
-                return vm[key]
-            })
-            console.log(content)
-            break
-        }
-        case 'input': {
-            start = '<' + ast.type + attrStr + '>'
-            end = ''
-            break
-        }
-        default: {
-            start = '<' + ast.type + attrStr + '>'
-            end = `</${ast.type}>`
-        }
+function genCode (ast) {
+    const { tag, attrs, children, content, on } = ast
+    let data = { attrs }
+    data.attrs === '{}' && delete data.attrs
+    content && (data.content = content)
+    if (on && Object.keys(on).length > 0) {
+        data.on = on
     }
+    data = JSON.stringify(data)
 
-    if (ast.children && ast.children.length) {
-        content += ast.children.reduce((total, item) => {
-            return total + objToHtml(item, vm)
-        }, '')
+    let childs = []
+    if (Array.isArray(children) && children.length) {
+        childs = children.map(item => {
+            return genCode(item)
+        })
     }
-    return start + content + end
+    return `_c('${tag}', ${data}, [${childs}])`
 }
