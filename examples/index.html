@@ -6,11 +6,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <script src="../dist/vue.js"></script>
+    <style>
+        #template{
+            display: none;
+        }
+    </style>
 </head>
 
 <body>
-    <div id="app" >
-        <div class="demo"><span >8888</span></div>
+    <div id="app"></div>
+
+    <div id="template">
+        <div class="demo"><span>8888</span></div>
+        <div class="other">
+            <p>你好</p>
+            <p>---描述---</p>
+        </div>
+        <div id="age">{{age}}</div>
+        <div id="age">{{name}}</div>
     </div>
     <script src="./index.js"></script>
 </body>

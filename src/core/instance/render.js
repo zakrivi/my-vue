@@ -14,20 +14,20 @@ export function renderMixin (Vue) {
     Vue.prototype._render = function () {
         // return vnode
         const vm = this
-        const ast = parse(document.querySelector(vm.$options.el).innerHTML.trim(), vm)
+        const ast = parse(document.querySelector('#template').innerHTML.trim(), vm)
         optimize(ast)
         const code = generate(ast)
         // eslint-disable-next-line no-new-func
         const vnode = new Function(code.render).call(this)
         // console.log(document.querySelector(vm.$options.el).innerHTML.trim())
-        console.log({ ast, vnode })
+        console.log({ ast, vnode, render: code.render })
         patch(null, vnode, document.querySelector(vm.$options.el))
     }
 
     Vue.prototype._e = createEmptyVNode
     Vue.prototype._c = createElement
     Vue.prototype._v = createTextVNode
-    Vue.prototype._s = Object.prototype.toString
+    Vue.prototype._s = String
 }
 
 export function mountComponent (vm, elm) {
