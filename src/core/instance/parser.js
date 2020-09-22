@@ -1,172 +1,362 @@
-import { Watcher } from '../observer/watcher.js'
-import { VNode } from './vnode.js'
+const ncname = '[A-z_][\\w\\-\\.]*'
+const singleAttrIdentifier = /([^\s"'<>/=]+)/
+const singleAttrAssign = /(?:=)/
+const singleAttrValues = [
+    /"([^"]*)"+/.source,
+    /'([^']*)'+/.source,
+    /([^\s"'=<>'])/.source
+]
 
+const attribute = new RegExp(
+    '^\\s*' + singleAttrIdentifier.source +
+    '(?:\\s*(' + singleAttrAssign.source + ')' +
+    '\\s*(?:' + singleAttrValues.join('|') + '))?'
+)
+
+const qunameCapture = '((?:' + ncname + '\\:)?' + ncname + ')'
+const startTagOpen = new RegExp('^<' + qunameCapture)
+const startTagClose = /^\s*(\/?)>/
+
+const endTag = new RegExp('^<\\/' + qunameCapture + '[^>]*>')
+
+const defaultTagRE = /\{\{((?:.|\n)+?)\}\}/g
+const forAliasRE = /(.*?)\s+(?:in|of)\s+(.*)/
+
+// stack栈保存解析好的标签头，根据在解析尾部标签的时候得到所属的层级关系和父标签
+// currentParent用于存放当前标签的父标签节点的引用，root变量指向根标签节点
 const stack = []
-const oldVNode = null
+let currentParent, root
 
-// export function parse (html, vm) {
-//     const ast = parseHTML(html, vm)
+let index
 
-//     const code = generate(ast)
-//     // eslint-disable-next-line no-new-func
-//     const _render = new Function(code).bind({
-//         _c: createElement
-//     })
-
-//     new Watcher(() => {
-//         const newVNode = _render()
-//         if (oldVNode) {
-//             console.log({ oldVNode, newVNode })
-//         } else {
-//             render(newVNode)
-//             oldVNode = newVNode
-//         }
-//     })
-
-//     function createElement (tag, data, children) {
-//         const vnode = new VNode(tag, data, children, vm)
-//         return vnode
-//     }
-// }
-
-export function render (vnode) {
-    const frag = document.createDocumentFragment()
-    frag.appendChild(vnodeToDOM(vnode))
-    document.querySelector('body').replaceChild(frag, document.querySelector('#app'))
+function advance (n) {
+    index += n
+    html = html.substring(n)
 }
 
-// 暂不考虑注释标签
-// 自循环解析数据，入栈出栈保证父子节点
-export function parseHTML (html) {
-    let index = 0
+function parseHTML () {
     while (html) {
-        // 匹配开始标签
-        const matchStart = html.match(/^<([A-z]+)/)
-        if (matchStart) {
-            parseStart(matchStart[1])
-        }
+        const textEnd = html.indexOf('<')
 
-        if (['input'].includes(stack[stack.length - 1].tag)) {
-            // 自闭合结束标签
-            const matchSelfCloseEnd = html.match(/^>/)
-            if (matchSelfCloseEnd) {
-                stack[stack.length - 2].children.push(stack.pop())
-                advence(1)
+        // 起始标签
+        if (textEnd === 0) {
+            // 结束标签
+            const endTagMath = html.match(endTag)
+            if (html.match(endTag)) {
+                advance(endTagMath[0].length)
+                parseEndTag(endTagMath[1])
+                continue
+            }
+            // 开始标签
+            if (html.match(startTagOpen)) {
+                const startTagMatch = parseStartTag()
+                const element = {
+                    type: 1,
+                    tag: startTagMatch.tagName,
+                    lowerCaseTag: startTagMatch.tagName.toLowerCase(),
+                    attrsList: startTagMatch.attrs,
+                    attrsMap: makeAttrsMap(startTagMatch.attrs),
+                    parent: currentParent,
+                    children: []
+                }
+
+                processIf(element)
+                processFor(element)
+
+                if (!root) {
+                    root = element
+                }
+
+                if (currentParent) {
+                    currentParent.children.push(element)
+                }
+                stack.push(element)
+                currentParent = element
+                continue
             }
         } else {
-            // 匹配开始标签尾巴
-            const matchStartTail = html.match(/^>/)
-            if (matchStartTail) {
-                advence(1)
+            // 文本
+            const text = html.substring(0, textEnd)
+            advance(textEnd)
+            let expression
+            // eslint-disable-next-line no-cond-assign
+            if (expression = parseText(text)) {
+                // 表达式节点
+                currentParent.children.push({
+                    type: 2,
+                    text,
+                    expression
+                })
+            } else {
+                // 普通文本节点
+                currentParent.children.push({
+                    type: 3,
+                    text
+                })
             }
-        }
-
-        // 匹配结束标签
-        const matchEnd = html.match(/(^<\/([A-z]+)>)|(^\/>)/)
-        if (matchEnd) {
-            if (stack.length > 1) {
-                stack[stack.length - 2].children.push(stack.pop())
-            }
-            parseEnd(matchEnd[0])
-        }
-
-        // 匹配文本节点
-        const matchText = html.match(/^([^<>]+)</)
-        if (matchText) {
-            stack[stack.length - 1].children.push(parseText(matchText[1]))
+            continue
         }
     }
 
-    return stack.pop()
+    return root
+}
 
-    function parseStart (tag) {
-        const result = {
-            tag: '',
-            attrs: {},
-            children: [],
-            on: {},
-            start: index,
-            end: undefined
+// 解析起始标签
+function parseStartTag () {
+    // 标签头部
+    const start = html.match(startTagOpen)
+    if (start) {
+        const match = {
+            tagName: start[1],
+            attrs: [],
+            start: index
         }
-        // 获取tag
-        if (tag === 'input') {
+        advance(start[0].length)
 
+        let end, attr
+        while (!(end = html.match(startTagClose)) && (attr = html.match(attribute))) {
+            // 解析标签结束以及标签内的属性
+            advance(attr[0].length)
+            match.attrs.push({
+                name: attr[1],
+                value: attr[3]
+            })
         }
-        result.tag = tag
-        advence(1 + result.tag.length)
 
-        // 获取属性attr
-        const matchAttr = html.match(/^([^<>]+)>/)
-        if (matchAttr) {
-            const attrReg = /([A-z-\d]+)="([A-z\d]+)"/g
-            while (attrReg.exec(matchAttr[1])) {
-                const key = RegExp.$1
-                const value = RegExp.$2
-                result.attrs[key] = value
-                if (key === 'v-model') {
-                    result.on.input = `function(e){
-                        this.${value} = e.target.value
-                    }`
-                }
-            }
-            advence(matchAttr[1].length)
+        if (end) {
+            match.unarySlash = end[1]
+            advance(end[0].length)
+            match.end = index
+            return match
         }
-        result.end = index
-        stack.push(result)
-    }
-
-    // 获取标签子节点，包括文本节点
-    // 匹配结束标签
-
-    function parseText (text) {
-        const obj = {
-            tag: 'text',
-            content: text,
-            start: index,
-            end: 0
-        }
-        advence(text.length)
-        obj.end = index
-
-        return obj
-    }
-    function parseEnd (match) {
-        advence(match.length)
-    }
-
-    function advence (n) {
-        html = html.substring(n)
-        index += n
     }
 }
 
-export function generate (ast) {
-    const code = genCode(ast)
-    return `with(this){return ${code}}`
-}
-
-function vnodeToDOM (vnode) {
-    vnode.children.forEach(item => {
-        vnode.elm.appendChild(vnodeToDOM(item))
-    })
-    return vnode.elm
-}
-
-function genCode (ast) {
-    const { tag, attrs, children, content, on } = ast
-    let data = { attrs }
-    data.attrs === '{}' && delete data.attrs
-    content && (data.content = content)
-    if (on && Object.keys(on).length > 0) {
-        data.on = on
+// 解析尾部标签
+// 找到stack栈中最近的与自己标签名一致的那个元素，将currentParent指向那个元素，并将该元素之前的元素都从stack中出栈
+function parseEndTag (tagName) {
+    let pos
+    for (pos = stack.length - 1; pos >= 0; pos--) {
+        if (stack[pos].lowerCaseTag === tagName.toLowerCase()) {
+            break
+        }
     }
-    data = JSON.stringify(data)
 
-    let childs = []
-    if (Array.isArray(children) && children.length) {
-        childs = children.map(item => {
-            return genCode(item)
+    if (pos >= 0) {
+        if (pos > 0) {
+            currentParent = stack[pos - 1]
+        } else {
+            currentParent = null
+        }
+        stack.length = pos
+    }
+}
+
+// 解析文本标签
+function parseText (text) {
+    if (!defaultTagRE.test(text)) {
+        return
+    }
+
+    const tokens = [] // 存放解析结果
+    let lastIndex = defaultTagRE.lastIndex = 0
+    let match, index
+    while ((match = defaultTagRE.exec(text))) {
+        index = match.index
+        if (index > lastIndex) {
+            // 普通文本
+            tokens.push(JSON.stringify(text.slice(lastIndex, index)))
+        }
+
+        // 表达式{{}}
+        const exp = match[1].trim()
+        tokens.push(`_s(${exp})`)
+        lastIndex = index + match[0].length
+    }
+    if (lastIndex < text.length) {
+        tokens.push(JSON.stringify(text.slice(lastIndex)))
+    }
+
+    return tokens.join('+')
+}
+
+// 用于从el的attrsMap或attrsList属性中取出name对应的值
+function getAndRemoveAttr (el, name) {
+    let val
+    if ((val = el.attrsMap[name]) != null) {
+        const list = el.attrsList
+        for (let i = 0, l = list.length; i < l; i++) {
+            if (list[i].name === name) {
+                list.splice(i, 1)
+                break
+            }
+        }
+    }
+
+    return val
+}
+
+// 将v-for指令解析成for属性和alias属性
+function processFor (el) {
+    let exp
+    // eslint-disable-next-line no-cond-assign
+    if (exp = getAndRemoveAttr(el, 'v-for')) {
+        const inMatch = exp.match(forAliasRE)
+        el.for = inMatch[2].trim()
+        el.alias = inMatch[1].trim()
+    }
+}
+
+// 将条件存入ifConditions数组中
+function processIf (el) {
+    const exp = getAndRemoveAttr(el, 'v-if')
+    if (exp) {
+        el.if = exp
+        if (!el.ifConditions) {
+            el.ifConditions = []
+        }
+        el.ifConditions.push({
+            exp: exp,
+            block: el
         })
     }
-    return `_c('${tag}', ${data}, [${childs}])`
 }
+
+// 将attrs转换成map格式
+function makeAttrsMap (attrs) {
+    const map = {}
+    attrs.forEach(item => {
+        map[item.name] = item.value
+    })
+    return map
+}
+
+// 判断该node是否是静态节点
+// type===2 表达式节点
+// type===3 文本节点
+function isStatic (node) {
+    if (node.type === 2) {
+        return false
+    }
+    if (node.type === 3) {
+        return true
+    }
+
+    return (!node.if && node.for)
+}
+
+// 标记static属性
+function markStatic (node) {
+    node.static = isStatic(node)
+    if (node.type === 1) {
+        // 遍历子节点
+        // 若子节点是非静态节点，那么当前节点也是非静态节点
+        for (let i = 0, l = node.children.length; i < l; i++) {
+            const child = node.children[i]
+            markStatic(child)
+            if (!child.static) {
+                node.static = false
+            }
+        }
+    }
+}
+
+// 标记静态根staticRoot
+// 若当前节点是静态节点，同时该节点并不是只有一个文本节点左右的子节点(作者认为优化消耗大于收益)，标记为true，否则为false
+function markStaticRoots (node) {
+    if (node.type === 1) {
+        if (
+            node.static &&
+            node.children.length &&
+            !(node.children.length === 1 && node.children[0].type === 3)
+        ) {
+            node.staticRoot = true
+        } else {
+            node.staticRoot = false
+        }
+    }
+}
+
+// 优化
+export function optimize (rootAst) {
+    markStatic(rootAst)
+    markStaticRoots(rootAst)
+}
+
+// 将ast转换成render function字符串
+// 得到render的字符串和staticRenderFns字符串
+
+// 处理if条件
+function genIf (el) {
+    el.ifProcessed = true
+    if (!el.ifConditions.length) {
+        return '_e()'
+    }
+
+    return `(${el.ifConditions[0].exp})?${genElement(el.ifConditions[0].block)}:_e()`
+}
+
+// 处理for循环
+function genFor (el) {
+    el.forProcessed = true
+
+    const exp = el.for
+    const alias = el.alias
+    const iterator1 = el.iterator1 ? `,${el.iterator1}` : ''
+    const iterator2 = el.iterator2 ? `,${el.iterator2}` : ''
+
+    return `_l((${exp}),` +
+            `function(${alias}${iterator1}${iterator2}){` +
+            `return ${genElement(el)}` +
+            '})'
+}
+
+// 处理文本
+function genText (el) {
+    return `_v(${el.expression || el.text})`
+}
+
+function genNode (el) {
+    if (el.type === 1) {
+        return genElement(el)
+    } else {
+        return genText(el)
+    }
+}
+
+function genChildren (el) {
+    const children = el.children
+    if (children && children.length > 0) {
+        return `[${children.map(genNode).join(',')}]`
+    }
+}
+
+function genElement (el) {
+    if (el.if && !el.ifProcessed) {
+        return genIf(el)
+    } else if (el.for && !el.forProcessed) {
+        return genFor(el)
+    } else {
+        const children = genChildren(el)
+        const code = `_c('${el.tag}',{
+                staticClass: ${el.attrsMap && el.attrsMap[':class']},
+                class: '${el.attrsMap && el.attrsMap.class}',
+                }${children ? `,${children}` : ''})`
+
+        return code
+    }
+}
+
+export function generate (rootAst) {
+    const code = rootAst ? genElement(rootAst) : '_c("div")'
+    return {
+        render: `with(this){return ${code}}`
+    }
+}
+
+export function parse (htmlStr) {
+    html = htmlStr
+    return parseHTML()
+}
+
+var html = ''

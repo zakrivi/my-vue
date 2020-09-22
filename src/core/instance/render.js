@@ -1,5 +1,7 @@
-import { parseHTML, generate } from './parser.js'
-import { VNode } from './vnode.js'
+
+import { parse, generate, optimize } from './parser.js'
+import { VNode, createEmptyVNode, createTextVNode } from './vnode.js'
+import { patch } from './patch.js'
 
 export function renderMixin (Vue) {
     Vue.prototype.$mount = function (el) {
@@ -12,21 +14,27 @@ export function renderMixin (Vue) {
     Vue.prototype._render = function () {
         // return vnode
         const vm = this
-        const ast = parseHTML(document.querySelector(vm.$options.el).outerHTML, vm)
-
+        const ast = parse(document.querySelector(vm.$options.el).innerHTML.trim(), vm)
+        optimize(ast)
         const code = generate(ast)
         // eslint-disable-next-line no-new-func
-        return new Function(code).bind({
-            _c: createElement.bind(this)
-        })()
+        const vnode = new Function(code.render).call(this)
+        // console.log(document.querySelector(vm.$options.el).innerHTML.trim())
+        console.log({ ast, vnode })
+        patch(null, vnode, document.querySelector(vm.$options.el))
     }
+
+    Vue.prototype._e = createEmptyVNode
+    Vue.prototype._c = createElement
+    Vue.prototype._v = createTextVNode
+    Vue.prototype._s = Object.prototype.toString
 }
 
 export function mountComponent (vm, elm) {
     vm._update(vm._render())
 }
 
-function createElement (tag, data, children) {
-    const vnode = new VNode(tag, data, children, this)
+export function createElement (tag, data, children) {
+    const vnode = new VNode(tag, data, children, '')
     return vnode
 }

@@ -2,7 +2,7 @@ import { render } from './parser.js'
 
 export function lifecycleMixin (Vue) {
     Vue.prototype._update = function (vnode) {
-        render(vnode)
+        // render(vnode)
         const vm = this
         const prevVnode = vm._node
         vm._node = vnode

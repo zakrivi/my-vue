@@ -1,4 +1,4 @@
-import { pushTarget, popTarget } from '../instance/dep.js'
+import { pushTarget, popTarget, Dep } from '../instance/dep.js'
 
 let uid = 0
 
@@ -9,9 +9,13 @@ export class Watcher {
         pushTarget(this)
         this.run()
         popTarget()
+
+        // 在new一个Watcher对象时将该对象赋值给Dep.target，在get中会用到
+        Dep.target = this
     }
 
     update () {
+        console.log('视图更新啦~')
         this.run()
     }
 
