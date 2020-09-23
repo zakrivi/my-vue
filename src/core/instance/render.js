@@ -2,6 +2,7 @@
 import { parse, generate, optimize } from './parser.js'
 import { VNode, createEmptyVNode, createTextVNode } from './vnode.js'
 import { patch } from './patch.js'
+import { Watcher } from '../observer/watcher.js'
 
 export function renderMixin (Vue) {
     Vue.prototype.$mount = function (el) {
@@ -21,7 +22,9 @@ export function renderMixin (Vue) {
         const vnode = new Function(code.render).call(this)
         // console.log(document.querySelector(vm.$options.el).innerHTML.trim())
         console.log({ ast, vnode, render: code.render })
-        patch(null, vnode, document.querySelector(vm.$options.el))
+        const prevVnode = vm._vnode
+        vm._vnode = vnode
+        patch(prevVnode, vnode, document.querySelector(vm.$options.el))
     }
 
     Vue.prototype._e = createEmptyVNode
@@ -31,7 +34,8 @@ export function renderMixin (Vue) {
 }
 
 export function mountComponent (vm, elm) {
-    vm._update(vm._render())
+    new Watcher(vm, vm._render)
+    // vm._update(vm._render())
 }
 
 export function createElement (tag, data, children) {

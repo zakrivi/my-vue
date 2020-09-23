@@ -356,6 +356,7 @@ export function generate (rootAst) {
 
 export function parse (htmlStr) {
     html = htmlStr
+    currentParent = root = undefined
     return parseHTML()
 }
 
