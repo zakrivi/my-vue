@@ -53,7 +53,7 @@ function parseHTML () {
                 const element = {
                     type: 1,
                     tag: startTagMatch.tagName,
-                    lowerCaseTag: startTagMatch.tagName.toLowerCase(),
+                    lowerCasedTag: startTagMatch.tagName.toLowerCase(),
                     attrsList: startTagMatch.attrs,
                     attrsMap: makeAttrsMap(startTagMatch.attrs),
                     parent: currentParent,
@@ -91,13 +91,13 @@ function parseHTML () {
                 // 普通文本节点
                 currentParent.children.push({
                     type: 3,
-                    text
+                    text: text.replace(/\n/g, '\\n')
                 })
             }
             continue
         }
     }
-
+    console.log(root)
     return root
 }
 
@@ -137,7 +137,7 @@ function parseStartTag () {
 function parseEndTag (tagName) {
     let pos
     for (pos = stack.length - 1; pos >= 0; pos--) {
-        if (stack[pos].lowerCaseTag === tagName.toLowerCase()) {
+        if (stack[pos].lowerCasedTag === tagName.toLowerCase()) {
             break
         }
     }
@@ -146,7 +146,7 @@ function parseEndTag (tagName) {
         if (pos > 0) {
             currentParent = stack[pos - 1]
         } else {
-            currentParent = null
+            currentParent = root
         }
         stack.length = pos
     }
@@ -313,7 +313,7 @@ function genFor (el) {
 
 // 处理文本
 function genText (el) {
-    return `_v(${el.expression || el.text})`
+    return `_v(${el.expression || `'${el.text}'`})`
 }
 
 function genNode (el) {
@@ -356,6 +356,7 @@ export function generate (rootAst) {
 
 export function parse (htmlStr) {
     html = htmlStr
+    currentParent = root = undefined
     return parseHTML()
 }
 

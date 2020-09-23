@@ -49,7 +49,8 @@ function createElm (vnode, parentElm, refElm) {
         vnode.children && vnode.children.length && createChildren(vnode, vnode.children, vnode.elm)
         insert(parentElm, vnode.elm, refElm)
     } else {
-        insert(parentElm, nodeOps.createTextNode(vnode.text), refElm)
+        vnode.elm = nodeOps.createTextNode(vnode.text)
+        insert(parentElm, vnode.elm, refElm)
     }
 }
 
@@ -141,8 +142,8 @@ function patchVnode (oldVnode, vnode) {
     const oldCh = oldVnode.children
     const ch = vnode.children
 
-    if (vnode.text) {
-        nodeOps.setTextContent(elm, vnode.text)
+    if (vnode.text || oldVnode.text) {
+        oldVnode.text !== vnode.text && nodeOps.setTextContent(elm, vnode.text)
     } else {
         if (oldCh && ch && oldCh !== ch) {
             updateChildren(elm, oldCh, ch)
