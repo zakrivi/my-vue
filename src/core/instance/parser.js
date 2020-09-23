@@ -56,6 +56,7 @@ function parseHTML () {
                     lowerCasedTag: startTagMatch.tagName.toLowerCase(),
                     attrsList: startTagMatch.attrs,
                     attrsMap: makeAttrsMap(startTagMatch.attrs),
+                    on: startTagMatch.on,
                     parent: currentParent,
                     children: []
                 }
@@ -109,6 +110,7 @@ function parseStartTag () {
         const match = {
             tagName: start[1],
             attrs: [],
+            on: {},
             start: index
         }
         advance(start[0].length)
@@ -121,6 +123,10 @@ function parseStartTag () {
                 name: attr[1],
                 value: attr[3]
             })
+            const eventName = attr[1].match(/^@(.*)/)
+            if (eventName && eventName[1]) {
+                match.on[eventName[1]] = attr[3]
+            }
         }
 
         if (end) {
@@ -341,6 +347,9 @@ function genElement (el) {
         const code = `_c('${el.tag}',{
                 staticClass: ${el.attrsMap && el.attrsMap[':class']},
                 class: '${el.attrsMap && el.attrsMap.class}',
+                on: {
+                    'click':${el.on.click}
+                }
                 }${children ? `,${children}` : ''})`
 
         return code

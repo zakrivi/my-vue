@@ -47,6 +47,10 @@ function createElm (vnode, parentElm, refElm) {
     if (vnode.tag) {
         vnode.elm = nodeOps.createElement(vnode.tag, vnode)
         vnode.children && vnode.children.length && createChildren(vnode, vnode.children, vnode.elm)
+        // 绑定事件
+        Object.keys(vnode.data.on).forEach(key => {
+            vnode.elm.addEventListener(key, vnode.data.on[key])
+        })
         insert(parentElm, vnode.elm, refElm)
     } else {
         vnode.elm = nodeOps.createTextNode(vnode.text)
