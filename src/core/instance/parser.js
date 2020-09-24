@@ -98,7 +98,6 @@ function parseHTML () {
             continue
         }
     }
-    console.log(root)
     return root
 }
 

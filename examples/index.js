@@ -9,17 +9,19 @@ const vm = new Vue({
         }
     },
     watch: {
-        age (val) {
-            console.log('watch-age: ', val)
-        },
-        number (val) {
-            console.log('watch-number: ', val)
-        }
+        // age (val) {
+        //     console.log('watch-age: ', val)
+        // },
+        // number (val) {
+        //     console.log('watch-number: ', val)
+        // }
     },
     methods: {
         handleClick () {
-            for (let i = 0; i < 1000; i++) {
-                this.number++
+            for (let i = 0; i < 3000; i++) {
+                setTimeout(() => {
+                    this.number++
+                })
             }
         }
     }

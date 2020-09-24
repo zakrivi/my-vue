@@ -21,7 +21,7 @@ export function renderMixin (Vue) {
         // eslint-disable-next-line no-new-func
         const vnode = new Function(code.render).call(this)
         // console.log(document.querySelector(vm.$options.el).innerHTML.trim())
-        console.log({ ast, vnode, render: code.render })
+        // console.log({ ast, vnode, render: code.render })
         const prevVnode = vm._vnode
         vm._vnode = vnode
         patch(prevVnode, vnode, document.querySelector(vm.$options.el))
