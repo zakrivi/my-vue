@@ -56,7 +56,7 @@ function parseHTML () {
                     lowerCasedTag: startTagMatch.tagName.toLowerCase(),
                     attrsList: startTagMatch.attrs,
                     attrsMap: makeAttrsMap(startTagMatch.attrs),
-                    on: startTagMatch.on,
+                    events: startTagMatch.events,
                     parent: currentParent,
                     children: []
                 }
@@ -98,6 +98,7 @@ function parseHTML () {
             continue
         }
     }
+    console.log(root)
     return root
 }
 
@@ -109,7 +110,7 @@ function parseStartTag () {
         const match = {
             tagName: start[1],
             attrs: [],
-            on: {},
+            events: {},
             start: index
         }
         advance(start[0].length)
@@ -124,7 +125,7 @@ function parseStartTag () {
             })
             const eventName = attr[1].match(/^@(.*)/)
             if (eventName && eventName[1]) {
-                match.on[eventName[1]] = attr[3]
+                match.events[eventName[1]] = attr[3]
             }
         }
 
@@ -343,12 +344,17 @@ function genElement (el) {
         return genFor(el)
     } else {
         const children = genChildren(el)
+        let on = ''
+        Object.keys(el.events).forEach(key => {
+            on += `${key}:${el.events[key]}`
+        })
+        on && (on = `on:{${on}}`)
+
+        console.log(el.attrsMap)
         const code = `_c('${el.tag}',{
-                staticClass: ${el.attrsMap && el.attrsMap[':class']},
-                class: '${el.attrsMap && el.attrsMap.class}',
-                on: {
-                    'click':${el.on.click}
-                }
+                staticClass: ${el.attrsMap.class ? `'${el.attrsMap.class}'` : undefined},
+                class: ${el.attrsMap[':class']},
+                ${on}
                 }${children ? `,${children}` : ''})`
 
         return code

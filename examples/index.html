@@ -10,6 +10,12 @@
         #template{
             display: none;
         }
+        .red{
+            color:red
+        }
+        .blue{
+            color: blue
+        }
     </style>
 </head>
 
@@ -17,15 +23,17 @@
     <div id="app"></div>
 
     <script type="text/x-template" id="template">
-        <div class="demo"><span>8888</span></div>
-        <div class="other">
-            <p>你好</p>
-            <p>---描述---</p>
+        <div class="demo" >
+            <span class="a b" :class="classStatus ? 'red' : 'blue'">8888</span>
+            <div class="other" v-if="classStatus">
+                <p>你好</p>
+                <p>---描述---</p>
+            </div>
+            <div id="age">{{age}}</div>
+            <div id="age">{{name}}</div>
+            <div>{{number}}</div>
+            <button @click="handleClick">click</button>
         </div>
-        <div id="age">{{age}}</div>
-        <div id="age">{{name}}</div>
-        <div>{{number}}</div>
-        <button @click="handleClick">click</button>
     </script>
     <script src="./index.js"></script>
 </body>
