@@ -12,8 +12,11 @@ const nodeOps = {
     createElement (tag, vnode) {
         const elm = document.createElement(tag)
         const data = vnode.data || {}
+        if (data.staticClass) {
+            elm.classList.add(...data.staticClass.split(' '))
+        }
         if (data.class) {
-            elm.setAttribute('class', data.class)
+            elm.classList.add(data.class)
         }
         return elm
     },
@@ -48,7 +51,7 @@ function createElm (vnode, parentElm, refElm) {
         vnode.elm = nodeOps.createElement(vnode.tag, vnode)
         vnode.children && vnode.children.length && createChildren(vnode, vnode.children, vnode.elm)
         // 绑定事件
-        Object.keys(vnode.data.on).forEach(key => {
+        vnode.data.on && Object.keys(vnode.data.on).forEach(key => {
             vnode.elm.addEventListener(key, vnode.data.on[key])
         })
         insert(parentElm, vnode.elm, refElm)
@@ -145,6 +148,11 @@ function patchVnode (oldVnode, vnode) {
     const elm = vnode.elm = oldVnode.elm
     const oldCh = oldVnode.children
     const ch = vnode.children
+
+    if (vnode.data.class !== oldVnode.data.class) {
+        oldVnode.data.class && oldVnode.elm.classList.remove(oldVnode.data.class)
+        vnode.data.class && oldVnode.elm.classList.add(vnode.data.class)
+    }
 
     if (vnode.text || oldVnode.text) {
         oldVnode.text !== vnode.text && nodeOps.setTextContent(elm, vnode.text)
