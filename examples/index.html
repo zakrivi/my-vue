@@ -25,7 +25,7 @@
     <script type="text/x-template" id="template">
         <div class="demo" >
             <span class="a b" :class="classStatus ? 'red' : 'blue'">8888</span>
-            <div class="other">
+            <div class="other" v-if="classStatus">
                 <p>你好</p>
                 <p>---描述---</p>
             </div>

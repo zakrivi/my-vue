@@ -24,11 +24,17 @@ const nodeOps = {
         return document.createTextNode(text)
     },
     insertBefore (parent, elm, ref) {
-
+        parent.insertBefore(elm, ref)
     },
     nextSibling () {},
     appendChild (parent, elm) {
         parent.appendChild(elm)
+    },
+    parentNode (elm) {
+        return elm.parentNode
+    },
+    removeChild (parent, child) {
+        parent.removeChild(child)
     }
 }
 
@@ -226,7 +232,8 @@ function updateChildren (parentElm, oldCh, newCh) {
             idxInOld = newStartVnode.key ? oldKeyToIdx[newStartVnode.key] : null
             if (!idxInOld) {
                 // 不存在节点，新建新节点，newStartIdx向后移动一位
-                createElm(newStartVnode, parentElm)
+                refElm = oldCh[oldStartIdx]
+                createElm(newStartVnode, parentElm, refElm.elm)
                 newStartVnode = newCh[++newStartIdx]
             } else {
                 // 存在节点
